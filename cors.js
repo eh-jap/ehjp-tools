@@ -1,0 +1,97 @@
+// deploying CORS proxy on Cloudflare Workers
+// configure secrets and enable Caching in settings
+// adapted from sample code at: https://developers.cloudflare.com/workers/examples/cors-header-proxy/
+
+export default {
+        async fetch(request) {
+                async function handleRequest(request) {
+                        let apiUrl = decodeURIComponent(new URL(request.url).pathname.slice(1));
+
+                        if (!apiUrl) {
+                                return new Response(null, {
+                                        status: 400,
+                                        statusText: "Bad Request",
+                                });
+                        }
+
+                        if (!/^https:\/\/github\.com\/eh-jap\/Database\/releases\/download\/dot-\d{6}\/db\.html\.json$/.test(apiUrl)) {
+                                return new Response(null, {
+                                        status: 403,
+                                        statusText: "Forbidden",
+                                });
+                        }
+
+                        // Rewrite request to point to API URL. This also makes the request mutable
+                        // so you can add the correct Origin header to make the API server think
+                        // that this request is not cross-site.
+                        request = new Request(apiUrl, {
+                          ...request,
+                          redirect: "follow",
+                        });
+                        request.headers.set("Origin", new URL(apiUrl).origin);
+                        let response = await fetch(request, {
+                                cf: {
+                                        cacheTtl: 3600,
+                                        cacheEverything: true,
+                                },
+                        });
+                        // Recreate the response so you can modify the headers
+
+                        response = new Response(response.body, response);
+
+                        response.headers.set("Cache-Control", "max-age=3600");
+
+                        // Set CORS headers
+
+                        response.headers.set("Access-Control-Allow-Origin", "*");
+
+                        // Append to/Add Vary header so browser will cache response correctly
+                        response.headers.append("Vary", "Origin");
+
+                        return response;
+                }
+
+                async function handleOptions(request) {
+                        if (
+                                request.headers.get("Origin") !== null &&
+                                request.headers.get("Access-Control-Request-Method") !== null &&
+                                request.headers.get("Access-Control-Request-Headers") !== null
+                        ) {
+                                // Handle CORS preflight requests.
+                                return new Response(null, {
+                                        headers: {
+                                                "Access-Control-Allow-Origin": "*",
+                                                "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
+                                                "Access-Control-Max-Age": "86400",
+                                                "Access-Control-Allow-Headers": request.headers.get(
+                                                        "Access-Control-Request-Headers",
+                                                ),
+                                        },
+                                });
+                        } else {
+                                // Handle standard OPTIONS request.
+                                return new Response(null, {
+                                        headers: {
+                                                Allow: "GET, HEAD, POST, OPTIONS",
+                                        },
+                                });
+                        }
+                }
+
+                if (request.method === "OPTIONS") {
+                        // Handle CORS preflight requests
+                        return handleOptions(request);
+                } else if (
+                        request.method === "GET" ||
+                        request.method === "HEAD" ||
+                        request.method === "POST"
+                ) {
+                        return handleRequest(request);
+                } else {
+                        return new Response(null, {
+                                status: 405,
+                                statusText: "Method Not Allowed",
+                        });
+                }
+        },
+};
