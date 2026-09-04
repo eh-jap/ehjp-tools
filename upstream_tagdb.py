@@ -1,6 +1,8 @@
 """
 drops chinese texts from upstream data
 perserving emojis/icons and artist links
+
+run under the "Database" repo
 """
 
 from glob import glob
