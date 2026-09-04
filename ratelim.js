@@ -1,7 +1,11 @@
 // GitHub Release API
 // used by UserScript to query version info
 // deploy this on Cloudflare Workers
-// enable Caching in settings
+// setup secrets and enable Caching in settings
+//
+// the github token should be generated in Developer Settings -> Fine-grained Token
+// select correct resource owner and select Database repo
+// add permission "Contents" and set to "Read only"
 
 export default {
   async fetch(request, env, ctx) {

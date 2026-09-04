@@ -1,6 +1,6 @@
 // deploying CORS proxy on Cloudflare Workers
-// configure secrets and enable Caching in settings
 // adapted from sample code at: https://developers.cloudflare.com/workers/examples/cors-header-proxy/
+// enable Caching in settings
 
 export default {
         async fetch(request) {
