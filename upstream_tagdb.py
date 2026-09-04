@@ -2,7 +2,9 @@
 drops chinese texts from upstream data
 perserving emojis/icons and artist links
 
-run under the "Database" repo
+to update our database from upstream,
+run under upstream's "Database" repo
+then merge changes manually into ours
 """
 
 from glob import glob
