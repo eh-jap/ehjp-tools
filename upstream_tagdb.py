@@ -16,6 +16,7 @@ from enum import Enum
 import enum
 import dataclasses
 from re import fullmatch
+from os.path import basename
 
 def parse_header(fp, yaml: YAML):
   # first line in file is an opening marker
@@ -62,7 +63,35 @@ class LoadedFile:
   hdr: Any = None
   body: list[GalleryTag] = dataclasses.field(default_factory=list)
 
-def handle_line(line: str, out: LoadedFile):
+def is_jp(s: str) -> bool:
+  """based on the upstream's policy, chinese translated tags are
+     not mixed with japanese kanas."""
+
+  for c in s:
+    cp = ord(c)
+
+    # https://ja.wikipedia.org/wiki/平仮名_(Unicodeのブロック)#収録文字
+    if cp >= 0x3041 and cp <= 0x3096: return True
+
+    # https://ja.wikipedia.org/wiki/片仮名_(Unicodeのブロック)#収録文字
+    if cp >= 0x30A1 and cp <= 0x30FA: return True
+
+  # whatever this is,
+  # we can't unfortunately ensure it's safe for importing automatically.
+  return False
+
+def contains_chinese(s) -> bool:
+  """currently only performing trivial check. not a full check."""
+
+  for c in s:
+    cp = ord(c)
+
+    # https://ja.wikipedia.org/wiki/CJK統合漢字_(Unicodeのブロック)
+    if cp >= 0x4E00 and cp <= 0x9FFF: return True
+
+  return False
+
+def handle_line(line: str, out: LoadedFile, allow_jp: bool):
   if not line.startswith('|'):
     # effectively skips "template"s
     return
@@ -79,19 +108,27 @@ def handle_line(line: str, out: LoadedFile):
 
   out.body.append(tag_obj)
 
-def parse_body(fp, out: LoadedFile):
+def parse_body(fp, out: LoadedFile, allow_jp: bool):
   # skip craps
   fp.readline()  # col names in chinese
   assert fp.readline() == '| -------- | ---- | ---- | -------- |\n', 'expecting table separator'
 
   while (line := fp.readline()) != '':
-    handle_line(line, out)
+    handle_line(line, out, allow_jp)
+
+# upstream allow pure japanese labels to exist in only these
+ALLOW_JP = ('artist.md', 'cosplayer.md', 'group.md')
+
+def allow_jp(path: str):
+  if basename(path) in ALLOW_JP:
+    return True
+  return False
 
 def parse(path: str, yaml: YAML) -> LoadedFile:
   res = LoadedFile()
   with open(path, 'r') as fp:
     res.hdr = parse_header(fp, yaml)
-    parse_body(fp, res)
+    parse_body(fp, res, allow_jp(path))
   return res
 
 def write_hdr(fp, yaml: YAML, file: LoadedFile):
