@@ -1,6 +1,6 @@
 """
 drops chinese texts from upstream data
-perserving emojis/icons, artist links and images
+perserving emojis/icons, artist names, links and images
 
 to update our database from upstream,
 run under upstream's "Database" repo
