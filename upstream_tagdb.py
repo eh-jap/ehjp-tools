@@ -96,7 +96,7 @@ def handle_line(line: str, out: LoadedFile, allow_jp: bool):
     # effectively skips "template"s
     return
 
-  m = fullmatch(r'\| ([^|]*) \| (.*) \| .* \| (.*) \|', line.removesuffix('\n'))
+  m = fullmatch(r'\| ([^|]*) \| (.*) \| (.*) \| (.*) \|', line.removesuffix('\n'))
   assert m is not None, f'could not parse line: {line!r}'
 
   raw = m.group(1)
